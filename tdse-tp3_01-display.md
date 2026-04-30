@@ -105,3 +105,34 @@ int main(void) {
     }
 }
 ```
+Este conjunto de archivos de código fuente en lenguaje C implementa una arquitectura de software "Bare Metal" orientada a eventos (Event-Triggered System o ETS). Está diseñada para un sistema embebido y utiliza un planificador cooperativo que ejecuta tareas de forma no bloqueante a intervalos regulares. 
+
+A continuación se detalla el funcionamiento de cada módulo:
+
+### Análisis de los Archivos
+
+* **app.c y app_it.c**: Constituyen el núcleo del sistema. `app.c` contiene la lista de tareas a ejecutar (`task_cfg_list`), que incluyen inicialización y actualización de tareas como el display y las pruebas. También se encarga de llamar a las tareas periódicamente y medir sus tiempos de ejecución (como el mejor y peor caso de tiempo de ejecución o BCET/WCET). Por su parte, `app_it.c` maneja las interrupciones del sistema, específicamente la interrupción del temporizador del sistema (`HAL_SYSTICK_Callback`), la cual actualiza el contador de *ticks* global que rige la ejecución del bucle principal.
+* **systick.c**: Proporciona funciones relacionadas con el temporizador de hardware (SysTick), como `systick_delay_us`, la cual genera retardos bloqueantes en microsegundos calculando los ciclos del procesador que han transcurrido.
+* **display.h y display.c**: Conforman el controlador (driver) de bajo nivel para una pantalla LCD alfanumérica. Permiten configurar la pantalla mediante conexiones GPIO de 4 u 8 bits y envían los comandos de inicialización, control del cursor y escritura de caracteres individuales o cadenas de texto mediante funciones como `displayCharPositionWrite` y `displayStringWrite`.
+* **task_display_attribute.h, task_display_interface.c y task_display.c**: Implementan una tarea específica para gestionar lo que se muestra en el LCD. `task_display.c` contiene la lógica principal de la tarea orientada a una máquina de estados. `task_display_interface.c` expone la función `put_event_task_display`, la cual sirve como interfaz para que otras tareas envíen mensajes de texto a la pantalla, guardándolos en un buffer interno (DDRAM) y generando un evento de actualización.
+* **task_test_attribute.h y task_test.c**: Definen e implementan una tarea de prueba del sistema. Esta tarea lleva un conteo de ciclos y utiliza temporizadores no bloqueantes para enviar periódicamente eventos a la tarea del display, demostrando que el sistema y la comunicación entre tareas funcionan correctamente. Las estructuras de datos asociadas, como el temporizador y el contador, se definen en los atributos.
+
+---
+
+### Comportamiento de las funciones de máquina de estados (Statecharts)
+
+Ambas funciones implementan máquinas de estados finitos (FSM) que permiten ejecutar lógica de forma asíncrona y no bloqueante.
+
+#### 1. Función `void task_test_statechart(void)`
+Esta función evalúa periódicamente el estado de la tarea de pruebas:
+1. **Actualización de contador:** Al ingresar, incrementa un contador de ejecuciones de la tarea (`p_task_test_dta->counter++`).
+2. **Temporizador no bloqueante:** Evalúa el valor de un temporizador interno (`tick`). Si el `tick` es mayor al mínimo configurado (`DEL_TEST_XX_MIN`), simplemente lo decrementa en 1 y sale de la función, permitiendo que otras tareas se ejecuten.
+3. **Generación del evento:** Cuando el `tick` llega a su valor mínimo (alcanzando el tiempo límite definido), la función recarga el temporizador con su valor máximo (`DEL_TEST_XX_MAX`).
+4. **Envío a pantalla:** Inmediatamente después, formula una cadena de texto dividiendo el contador total por el temporizador máximo para obtener el número de prueba actual, y utiliza la interfaz `put_event_task_display` para mandar a imprimir la frase "Test Nro: ******" junto con el valor calculado a la segunda línea del display LCD.
+
+#### 2. Función `void task_display_statechart(void)`
+Esta función controla el flujo de envío de información física hacia el display LCD y opera con dos estados principales definidos mediante un `switch`:
+1. **Estado ST_DSP_IDLE (Reposo):** La tarea permanece en este estado esperando que haya datos nuevos. Verifica si se ha levantado una bandera booleana (`flag == true`) y si el evento registrado es de tipo actualización (`EV_DSP_UPDATE`). Si se cumplen estas condiciones (lo cual ocurre cuando alguien llama a `put_event_task_display`), transiciona al estado `ST_DSP_UPDATE`.
+2. **Estado ST_DSP_UPDATE (Actualización):** En este estado, la tarea vuelve a confirmar la presencia del evento. Luego, baja la bandera de actualización (`flag = false`) indicando que el evento está siendo procesado. 
+3. **Escritura en Hardware:** Seguidamente, reposiciona el cursor del hardware (fila 0, columna 0) y escribe en la pantalla la primera línea almacenada en su memoria interna (`ddram`). Repite el mismo proceso para la segunda línea (fila 1, columna 0).
+4. **Retorno:** Una vez finalizada la escritura, el estado vuelve a cambiar a `ST_DSP_IDLE` para quedar a la espera del próximo texto a dibujar. También incluye un estado *default* de seguridad que reinicia la máquina a sus valores iniciales en caso de fallo.
