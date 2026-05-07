@@ -136,3 +136,9 @@ Esta función controla el flujo de envío de información física hacia el displ
 2. **Estado ST_DSP_UPDATE (Actualización):** En este estado, la tarea vuelve a confirmar la presencia del evento. Luego, baja la bandera de actualización (`flag = false`) indicando que el evento está siendo procesado. 
 3. **Escritura en Hardware:** Seguidamente, reposiciona el cursor del hardware (fila 0, columna 0) y escribe en la pantalla la primera línea almacenada en su memoria interna (`ddram`). Repite el mismo proceso para la segunda línea (fila 1, columna 0).
 4. **Retorno:** Una vez finalizada la escritura, el estado vuelve a cambiar a `ST_DSP_IDLE` para quedar a la espera del próximo texto a dibujar. También incluye un estado *default* de seguridad que reinicia la máquina a sus valores iniciales en caso de fallo.
+
+### Ejecución
+<img width="662" height="260" alt="image" src="https://github.com/user-attachments/assets/296fe79d-4fef-4e16-a419-e77b802d8a24" />
+
+La variable NOE representa la cantidad de ejecuciones y es adimensional. Las variables LET, BCET y WCET representan el último tiempo, mejor tiempo y peor tiempo de ejecución de cada ciclo, respectivamente, y están medidas en μs.  
+En particular, el peor tiempo de ejecución de la función <tt>task_display_update</tt> es de 6000 μs (6 ms), por lo que no cumple con la restricción del ejecutor cíclico, que es de 1ms.
