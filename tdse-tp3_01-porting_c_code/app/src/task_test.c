@@ -88,7 +88,7 @@ void task_test_init(void *parameters)
 	
 	LOGGER_INFO("   %s = %lu", GET_NAME(tick), (uint32_t)tick);
 
-	put_event_task_display(0, 0, "Ochi te quero uo");
+	put_event_task_display(0, 0, "LCD Display Test");
 	put_event_task_display(0, 1, " Porting C code ");
 }
 
