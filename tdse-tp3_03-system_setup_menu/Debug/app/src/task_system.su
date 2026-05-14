@@ -1,0 +1,5 @@
+../app/src/task_system.c:90:6:task_system_init	88	static,ignoring_inline_asm
+../app/src/task_system.c:148:6:task_system_update	16	static
+../app/src/task_system.c:173:6:task_system_normal_statechart	88	static
+../app/src/task_system.c:337:6:task_system_setup_statechart	16	static
+../app/src/task_system.c:406:6:task_system_set_mode	16	static
