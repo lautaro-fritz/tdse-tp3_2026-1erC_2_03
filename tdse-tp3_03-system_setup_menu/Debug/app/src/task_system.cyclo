@@ -1,5 +1,5 @@
 ../app/src/task_system.c:90:6:task_system_init	6
 ../app/src/task_system.c:148:6:task_system_update	3
-../app/src/task_system.c:173:6:task_system_normal_statechart	32
-../app/src/task_system.c:337:6:task_system_setup_statechart	2
-../app/src/task_system.c:406:6:task_system_set_mode	1
+../app/src/task_system.c:173:6:task_system_normal_statechart	40
+../app/src/task_system.c:374:6:task_system_setup_statechart	2
+../app/src/task_system.c:443:6:task_system_set_mode	1

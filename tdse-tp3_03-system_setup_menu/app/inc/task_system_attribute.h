@@ -57,6 +57,7 @@ typedef enum task_system_st {ST_SYS_IDLE,
 							 ST_SYS_ACTIVE,
 							 ST_SYS_MENU_1,
 							 ST_SYS_MENU_2,
+							 ST_SYS_MENU_3,
 							 ST_SYS_POWER,
 							 ST_SYS_SPEED,
 							 ST_SYS_SPIN
