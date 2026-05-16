@@ -62,6 +62,7 @@ typedef enum task_system_mode {NORMAL, SETUP, MODE_QTY} task_system_mode_t;
 #define SYSTEM_DTA_QTY	MODE_QTY
 #define MOTORS_QTY 2
 #define PARAMS_QTY 3
+#define MAX_SPEED 9
 
 /********************** internal data declaration ****************************/
 task_system_dta_t task_system_dta_list[SYSTEM_DTA_QTY];
@@ -85,7 +86,9 @@ motor_t motors_list[] = {
 		{false, 0, LEFT},
 		{false, 0, LEFT}
 };
-
+bool power;
+uint8_t speed;
+spin_st_t spin;
 /********************** external functions definition ************************/
 void task_system_init(void *parameters)
 {
@@ -211,6 +214,7 @@ void task_system_normal_statechart(void)
 
 				char buffer[16];
 				motor_idx = 0;
+				param_idx = 0;
 				current_motor = motors_list[motor_idx];
 				snprintf(buffer, sizeof(buffer), "    MOTOR %d     ", motor_idx+1);
 				put_event_task_display(0, 0, " ENTER/ESC/NEXT ");
@@ -271,6 +275,9 @@ void task_system_normal_statechart(void)
 				p_task_system_dta->flag = false;
 
 				current_motor = motors_list[motor_idx];
+				power = current_motor.power;
+				speed = current_motor.speed;
+				spin = current_motor.spin;
 
 				put_event_task_display(0, 1, "     >POWER     ");
 				p_task_system_dta->state = ST_SYS_MENU_2;
@@ -319,7 +326,29 @@ void task_system_normal_statechart(void)
 			{
 				put_event_task_actuator(EV_LED_ACTIVE, ID_LED_A);
 				p_task_system_dta->flag = false;
-//				p_task_system_dta->event = EV_SYS_IDLE;
+				p_task_system_dta->event = EV_SYS_IDLE;
+
+				switch(param_idx) {
+				case 0: {
+					power = current_motor.power;
+					char* power_label = power ? "ON" : "OFF";
+
+					snprintf(buffer, sizeof(buffer), "     > %s      ", power_label);
+					put_event_task_display(0, 1, buffer);
+					break;}
+				case 1:{
+					speed = current_motor.speed;
+					snprintf(buffer, sizeof(buffer), "     > %d      ", speed);
+					put_event_task_display(0, 1, buffer);
+					break;}
+				case 2:{
+					spin = current_motor.spin;
+					char* spin_label = spin == LEFT ? "LEFT" : "RIGHT";
+
+					snprintf(buffer, sizeof(buffer), "     > %s   ", spin_label);
+					put_event_task_display(0, 1, buffer);
+					break;}
+				}
 
 				p_task_system_dta->state = ST_SYS_MENU_3;
 
@@ -328,22 +357,6 @@ void task_system_normal_statechart(void)
 			break;
 
 		case ST_SYS_MENU_3:
-			switch(param_idx) {
-				case 0:{
-					bool power = current_motor.power;
-					char* power_label = power ? "ON" : "OFF";
-
-					snprintf(buffer, sizeof(buffer), "     > %s      ", power_label);
-					put_event_task_display(0, 0, "asd");
-					put_event_task_display(0, 1, buffer);
-					break;}
-				case 1:{
-					put_event_task_display(0, 1, "     >SPEED     ");
-					break;}
-				case 2:{
-					put_event_task_display(0, 1, "     >SPIN      ");
-					break;}
-				}
 
 			if ((true == p_task_system_dta->flag) && (EV_SYS_ESCAPE == p_task_system_dta->event))
 			{
@@ -351,9 +364,59 @@ void task_system_normal_statechart(void)
 				p_task_system_dta->flag = false;
 	//				p_task_system_dta->event = EV_SYS_IDLE;
 
-				p_task_system_dta->state = ST_SYS_MENU_2;
-
 				put_event_task_display(0, 1, "     >POWER     ");
+				param_idx = 0;
+				p_task_system_dta->state = ST_SYS_MENU_2;
+			}
+
+			if ((true == p_task_system_dta->flag) && (EV_SYS_NEXT == p_task_system_dta->event))
+			{
+				put_event_task_actuator(EV_LED_ACTIVE, ID_LED_A);
+				p_task_system_dta->flag = false;
+				switch(param_idx) {
+				case 0: {
+					power = !power;
+					char* power_label = power ? "ON" : "OFF";
+
+					snprintf(buffer, sizeof(buffer), "     > %s      ", power_label);
+					put_event_task_display(0, 1, buffer);
+					break;}
+
+				case 1: {
+					speed = (speed + 1) % (MAX_SPEED + 1);
+					snprintf(buffer, sizeof(buffer), "     > %d      ", speed);
+					put_event_task_display(0, 1, buffer);
+					break;}
+
+				case 2: {
+					spin = spin == LEFT ? RIGHT : LEFT;
+					char* spin_label = spin == LEFT ? "LEFT" : "RIGHT";
+
+					snprintf(buffer, sizeof(buffer), "     > %s   ", spin_label);
+					put_event_task_display(0, 1, buffer);
+					break;}
+				}
+
+			}
+			if ((true == p_task_system_dta->flag) && (EV_SYS_ENTER == p_task_system_dta->event))
+			{
+				p_task_system_dta->flag = false;
+
+				current_motor.power = power;
+				current_motor.speed = speed;
+				current_motor.spin = spin;
+
+				motors_list[motor_idx] = current_motor;
+
+				for(int i = 0; i < MOTORS_QTY; i++) {
+					char* power_label = motors_list[i].power ? "ON" : "OFF";
+					char spin_label = motors_list[i].spin == LEFT ? 'L' : 'R';
+					snprintf(buffer, sizeof(buffer), "Motor %d:%s,%d,%c  ", i + 1, power_label, motors_list[i].speed, spin_label);
+					//put_event_task_display(0, 0, " ENTER/ESC/NEXT ");
+					put_event_task_display(0, i, buffer);
+				}
+
+				p_task_system_dta->state = ST_SYS_IDLE;
 			}
 
 
